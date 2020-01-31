@@ -1,4 +1,4 @@
-use actix_web::{web, HttpResponse, Responder};
+use actix_web::{web, HttpResponse};
 use mysql::Pool;
 use serde::Deserialize;
 
@@ -13,11 +13,11 @@ pub struct QueryParam {
 pub async fn handler_next(
     pool: &'static Pool,
     q: web::Query<QueryParam>,
-) -> impl Responder {
+) -> HttpResponse {
     match read_all(pool) {
         Ok((characters, relationships)) => {
             if characters.iter().find(|c| c.name == q.name).is_none() {
-                HttpResponse::Ok()
+                HttpResponse::NoContent()
                     .body(format!("{:?} does not exists.", &q.name))
             } else {
                 match next_heir(&q.name, &characters, &relationships) {
@@ -38,11 +38,11 @@ pub async fn handler_next(
 pub async fn handler_kill(
     pool: &'static Pool,
     q: web::Query<QueryParam>,
-) -> impl Responder {
+) -> HttpResponse {
     match read_characters(pool) {
         Ok(characters) => {
             if characters.iter().find(|c| c.name == q.name).is_none() {
-                HttpResponse::Ok()
+                HttpResponse::NoContent()
                     .body(format!("{:?} does not exists.", &q.name))
             } else {
                 println!("Killing: {:?}", &q.name);

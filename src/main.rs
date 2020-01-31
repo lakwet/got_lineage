@@ -8,6 +8,8 @@ extern crate serde;
 pub mod data;
 pub mod logic;
 pub mod server;
+#[cfg(test)]
+pub mod test;
 
 use actix_web::{web, App, HttpServer};
 use std::net;
