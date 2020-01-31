@@ -10,6 +10,21 @@ pub struct Character {
     pub alive: bool,
 }
 
+fn string_to_gender(s: String) -> Gender {
+    if s == "M" {
+        Gender::M
+    } else {
+        Gender::F
+    }
+}
+
+fn gender_to_string(g: Gender) -> String {
+    match g {
+        Gender::M => "M".into(),
+        Gender::F => "F".into(),
+    }
+}
+
 pub fn get_pool(config: &Config) -> Pool {
     let mut builder = OptsBuilder::new();
     builder
@@ -62,40 +77,41 @@ pub fn fill_tables_with_raw_input(
     for mut stmt in pool
         .prepare(
             r"INSERT INTO relationship
-        (parent_name, parent_sex, child_name, child_sex)
-        VALUES
-        (:parent_name, :parent_sex, :child_name, :child_sex)",
+            (parent_name, parent_sex, child_name, child_sex)
+            VALUES
+            (:parent_name, :parent_sex, :child_name, :child_sex)",
         )
         .into_iter()
     {
         for c in relationships.iter() {
-            stmt.execute(params!{
+            stmt.execute(params! {
                 "parent_name" => &c.parent_name,
-                "parent_sex" => if c.parent_sex == Gender::M { "M" } else { "F" },
+                "parent_sex" => gender_to_string(c.parent_sex),
                 "child_name" => &c.child_name,
-                "child_sex" => if c.child_sex == Gender::M { "M" } else { "F" },
-            }).unwrap();
+                "child_sex" => gender_to_string(c.child_sex),
+            })
+            .unwrap();
         }
     }
 
     for mut stmt in pool
         .prepare(
             r"INSERT IGNORE INTO characters
-        (name, sex, alive)
-        VALUES
-        (:name, :sex, TRUE)",
+            (name, sex, alive)
+            VALUES
+            (:name, :sex, TRUE)",
         )
         .into_iter()
     {
         for c in relationships.iter() {
             stmt.execute(params! {
                 "name" => &c.parent_name,
-                "sex" => if c.parent_sex == Gender::M { "M" } else { "F" },
+                "sex" => gender_to_string(c.parent_sex),
             })
             .unwrap();
             stmt.execute(params! {
                 "name" => &c.child_name,
-                "sex" => if c.child_sex == Gender::M { "M" } else { "F" },
+                "sex" => gender_to_string(c.child_sex),
             })
             .unwrap();
         }
@@ -113,8 +129,7 @@ pub fn kill_character(name: &str, pool: &Pool) {
 }
 
 pub fn read_characters(pool: &Pool) -> Vec<Character> {
-    pool
-        .prep_exec("SELECT * FROM characters", ())
+    pool.prep_exec("SELECT * FROM characters", ())
         .map(|result| {
             result
                 .map(|x| x.unwrap())
@@ -123,7 +138,7 @@ pub fn read_characters(pool: &Pool) -> Vec<Character> {
                         from_row(row);
                     Character {
                         name,
-                        sex: if sex == "M" { Gender::M } else { Gender::F },
+                        sex: string_to_gender(sex),
                         alive,
                     }
                 })
@@ -149,17 +164,9 @@ pub fn read_all(pool: &Pool) -> (Vec<Character>, Vec<Relationship>) {
                     ) = from_row(row);
                     Relationship {
                         parent_name,
-                        parent_sex: if parent_sex == "M" {
-                            Gender::M
-                        } else {
-                            Gender::F
-                        },
+                        parent_sex: string_to_gender(parent_sex),
                         child_name,
-                        child_sex: if child_sex == "M" {
-                            Gender::M
-                        } else {
-                            Gender::F
-                        },
+                        child_sex: string_to_gender(child_sex),
                     }
                 })
                 .collect()
