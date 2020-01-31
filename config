@@ -1,0 +1,6 @@
+export MYSQL_USER="root"
+export MYSQL_PASSWORD="12345678"
+export MYSQL_HOST="localhost"
+export MYSQL_DATABASE="game_of_throne"
+export MYSQL_PORT="3306"
+export GAME_OF_THRONE_RESET_CHARACTER="true"
