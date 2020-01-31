@@ -1,6 +1,28 @@
 use super::data::{Gender, Relationship};
 use super::server::db::Character;
 
+fn get_characters_by_parent_name(
+    subset: &[&Relationship],
+    characters: &[Character],
+) -> Vec<Character> {
+    characters
+        .iter()
+        .filter(|c| subset.iter().any(|r| r.parent_name == c.name))
+        .map(|c| c.clone())
+        .collect()
+}
+
+fn get_characters_by_child_name(
+    subset: &[&Relationship],
+    characters: &[Character],
+) -> Vec<Character> {
+    characters
+        .iter()
+        .filter(|c| subset.iter().any(|r| r.child_name == c.name))
+        .map(|c| c.clone())
+        .collect()
+}
+
 fn get_parents(
     name: &str,
     characters: &[Character],
@@ -11,11 +33,21 @@ fn get_parents(
         .filter(|r| r.child_name == *name)
         .collect();
 
-    characters
+    get_characters_by_parent_name(&parents_name[..], characters)
+}
+
+fn get_children(
+    name: &str,
+    characters: &[Character],
+    relationships: &[Relationship],
+    gender: Gender,
+) -> Vec<Character> {
+    let sons_name: Vec<&Relationship> = relationships
         .iter()
-        .filter(|c| parents_name.iter().any(|r| r.parent_name == c.name))
-        .map(|c| c.clone())
-        .collect()
+        .filter(|r| r.parent_name == *name && r.child_sex == gender)
+        .collect();
+
+    get_characters_by_child_name(&sons_name[..], characters)
 }
 
 fn get_sons(
@@ -23,62 +55,7 @@ fn get_sons(
     characters: &[Character],
     relationships: &[Relationship],
 ) -> Vec<Character> {
-    let sons_name: Vec<&Relationship> = relationships
-        .iter()
-        .filter(|r| r.parent_name == *name && r.child_sex == Gender::M)
-        .collect();
-
-    characters
-        .iter()
-        .filter(|c| sons_name.iter().any(|r| r.child_name == c.name))
-        .map(|c| c.clone())
-        .collect()
-}
-
-fn get_brothers(
-    name: &str,
-    characters: &[Character],
-    relationships: &[Relationship],
-) -> Vec<Character> {
-    let parents = get_parents(name, characters, relationships);
-
-    let brothers_name: Vec<&Relationship> = relationships
-        .iter()
-        .filter(|r| {
-            parents.iter().any(|p| p.name == r.parent_name)
-                && r.child_sex == Gender::M
-                && r.child_name != *name
-        })
-        .collect();
-
-    characters
-        .iter()
-        .filter(|c| brothers_name.iter().any(|r| r.child_name == c.name))
-        .map(|c| c.clone())
-        .collect()
-}
-
-fn get_sisters(
-    name: &str,
-    characters: &[Character],
-    relationships: &[Relationship],
-) -> Vec<Character> {
-    let parents = get_parents(name, characters, relationships);
-
-    let sisters_name: Vec<&Relationship> = relationships
-        .iter()
-        .filter(|r| {
-            parents.iter().any(|p| p.name == r.parent_name)
-                && r.child_sex == Gender::F
-                && r.child_name != *name
-        })
-        .collect();
-
-    characters
-        .iter()
-        .filter(|c| sisters_name.iter().any(|r| r.child_name == c.name))
-        .map(|c| c.clone())
-        .collect()
+    get_children(name, characters, relationships, Gender::M)
 }
 
 fn get_daughters(
@@ -86,16 +63,43 @@ fn get_daughters(
     characters: &[Character],
     relationships: &[Relationship],
 ) -> Vec<Character> {
-    let daugthers_name: Vec<&Relationship> = relationships
+    get_children(name, characters, relationships, Gender::F)
+}
+
+fn get_siblings(
+    name: &str,
+    characters: &[Character],
+    relationships: &[Relationship],
+    gender: Gender,
+) -> Vec<Character> {
+    let parents = get_parents(name, characters, relationships);
+
+    let siblings_name: Vec<&Relationship> = relationships
         .iter()
-        .filter(|r| r.parent_name == *name && r.child_sex == Gender::F)
+        .filter(|r| {
+            parents.iter().any(|p| p.name == r.parent_name)
+                && r.child_sex == gender
+                && r.child_name != *name
+        })
         .collect();
 
-    characters
-        .iter()
-        .filter(|c| daugthers_name.iter().any(|r| r.child_name == c.name))
-        .map(|c| c.clone())
-        .collect()
+    get_characters_by_child_name(&siblings_name[..], characters)
+}
+
+fn get_brothers(
+    name: &str,
+    characters: &[Character],
+    relationships: &[Relationship],
+) -> Vec<Character> {
+    get_siblings(name, characters, relationships, Gender::M)
+}
+
+fn get_sisters(
+    name: &str,
+    characters: &[Character],
+    relationships: &[Relationship],
+) -> Vec<Character> {
+    get_siblings(name, characters, relationships, Gender::F)
 }
 
 fn get_nephews(
