@@ -112,8 +112,8 @@ pub fn kill_character(name: &str, pool: &Pool) {
     .unwrap();
 }
 
-pub fn read_all(pool: &Pool) -> (Vec<Character>, Vec<Relationship>) {
-    let characters: Vec<Character> = pool
+pub fn read_characters(pool: &Pool) -> Vec<Character> {
+    pool
         .prep_exec("SELECT * FROM characters", ())
         .map(|result| {
             result
@@ -129,7 +129,11 @@ pub fn read_all(pool: &Pool) -> (Vec<Character>, Vec<Relationship>) {
                 })
                 .collect()
         })
-        .unwrap();
+        .unwrap()
+}
+
+pub fn read_all(pool: &Pool) -> (Vec<Character>, Vec<Relationship>) {
+    let characters = read_characters(pool);
 
     let relationships: Vec<Relationship> = pool
         .prep_exec("SELECT * FROM relationship", ())
