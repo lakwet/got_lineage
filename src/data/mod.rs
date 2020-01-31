@@ -1,5 +1,5 @@
-use std::error::Error;
 use csv::Reader;
+use std::error::Error;
 
 use serde::Deserialize;
 
@@ -64,7 +64,6 @@ pub fn read_raw_input() -> Result<Vec<Relationship>, Box<dyn Error>> {
         let c = convert(row)?;
 
         relationships.push(c);
-
     }
 
     Ok(relationships)

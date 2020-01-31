@@ -1,10 +1,10 @@
-use super::data::{Relationship, Gender};
+use super::data::{Gender, Relationship};
 use super::server::db::Character;
 
 fn get_parents(
-    name: &String,
-    characters: &Vec<Character>,
-    relationships: &Vec<Relationship>,
+    name: &str,
+    characters: &[Character],
+    relationships: &[Relationship],
 ) -> Vec<Character> {
     let parents_name: Vec<&Relationship> = relationships
         .iter()
@@ -13,15 +13,15 @@ fn get_parents(
 
     characters
         .iter()
-        .filter(|c| parents_name.iter().find(|r| r.parent_name == c.name).is_some())
+        .filter(|c| parents_name.iter().any(|r| r.parent_name == c.name))
         .map(|c| c.clone())
         .collect()
 }
 
 fn get_sons(
-    name: &String,
-    characters: &Vec<Character>,
-    relationships: &Vec<Relationship>,
+    name: &str,
+    characters: &[Character],
+    relationships: &[Relationship],
 ) -> Vec<Character> {
     let sons_name: Vec<&Relationship> = relationships
         .iter()
@@ -30,59 +30,61 @@ fn get_sons(
 
     characters
         .iter()
-        .filter(|c| sons_name.iter().find(|r| r.child_name == c.name).is_some())
+        .filter(|c| sons_name.iter().any(|r| r.child_name == c.name))
         .map(|c| c.clone())
         .collect()
 }
 
 fn get_brothers(
-    name: &String,
-    characters: &Vec<Character>,
-    relationships: &Vec<Relationship>,
+    name: &str,
+    characters: &[Character],
+    relationships: &[Relationship],
 ) -> Vec<Character> {
     let parents = get_parents(name, characters, relationships);
 
     let brothers_name: Vec<&Relationship> = relationships
         .iter()
-        .filter(|r|
-            parents.iter().find(|p| p.name == r.parent_name).is_some()
-            && r.child_sex == Gender::M
-            && r.child_name != *name)
+        .filter(|r| {
+            parents.iter().any(|p| p.name == r.parent_name)
+                && r.child_sex == Gender::M
+                && r.child_name != *name
+        })
         .collect();
 
     characters
         .iter()
-        .filter(|c| brothers_name.iter().find(|r| r.child_name == c.name).is_some())
+        .filter(|c| brothers_name.iter().any(|r| r.child_name == c.name))
         .map(|c| c.clone())
         .collect()
 }
 
 fn get_sisters(
-    name: &String,
-    characters: &Vec<Character>,
-    relationships: &Vec<Relationship>,
+    name: &str,
+    characters: &[Character],
+    relationships: &[Relationship],
 ) -> Vec<Character> {
     let parents = get_parents(name, characters, relationships);
 
     let sisters_name: Vec<&Relationship> = relationships
         .iter()
-        .filter(|r|
-            parents.iter().find(|p| p.name == r.parent_name).is_some()
-            && r.child_sex == Gender::F
-            && r.child_name != *name)
+        .filter(|r| {
+            parents.iter().any(|p| p.name == r.parent_name)
+                && r.child_sex == Gender::F
+                && r.child_name != *name
+        })
         .collect();
 
     characters
         .iter()
-        .filter(|c| sisters_name.iter().find(|r| r.child_name == c.name).is_some())
+        .filter(|c| sisters_name.iter().any(|r| r.child_name == c.name))
         .map(|c| c.clone())
         .collect()
 }
 
 fn get_daughters(
-    name: &String,
-    characters: &Vec<Character>,
-    relationships: &Vec<Relationship>,
+    name: &str,
+    characters: &[Character],
+    relationships: &[Relationship],
 ) -> Vec<Character> {
     let daugthers_name: Vec<&Relationship> = relationships
         .iter()
@@ -91,15 +93,15 @@ fn get_daughters(
 
     characters
         .iter()
-        .filter(|c| daugthers_name.iter().find(|r| r.child_name == c.name).is_some())
+        .filter(|c| daugthers_name.iter().any(|r| r.child_name == c.name))
         .map(|c| c.clone())
         .collect()
 }
 
 fn get_nephews(
-    name: &String,
-    characters: &Vec<Character>,
-    relationships: &Vec<Relationship>,
+    name: &str,
+    characters: &[Character],
+    relationships: &[Relationship],
 ) -> Vec<Character> {
     let mut sisters = get_sisters(name, characters, relationships);
     let brothers = get_brothers(name, characters, relationships);
@@ -117,9 +119,9 @@ fn get_nephews(
 }
 
 fn get_nieces(
-    name: &String,
-    characters: &Vec<Character>,
-    relationships: &Vec<Relationship>,
+    name: &str,
+    characters: &[Character],
+    relationships: &[Relationship],
 ) -> Vec<Character> {
     let mut sisters = get_sisters(name, characters, relationships);
     let brothers = get_brothers(name, characters, relationships);
@@ -137,8 +139,8 @@ fn get_nieces(
 }
 
 fn get_survivors_within_the_house(
-    name: &String,
-    characters: &Vec<Character>,
+    name: &str,
+    characters: &[Character],
 ) -> Vec<Character> {
     let surname: Vec<&str> = name.rsplitn(2, ' ').collect();
     characters
@@ -146,9 +148,7 @@ fn get_survivors_within_the_house(
         .filter(|c| {
             let c_surname: Vec<&str> = c.name.rsplitn(2, ' ').collect();
 
-            c.name != *name
-            && c_surname[0] == surname[0]
-            && c.alive
+            c.name != *name && c_surname[0] == surname[0] && c.alive
         })
         .map(|c| c.clone())
         .collect()
@@ -164,9 +164,9 @@ fn get_survivors_within_the_house(
 // 7 - Others
 
 pub fn next_heir(
-    name: &String,
-    characters: &Vec<Character>,
-    relationships: &Vec<Relationship>,
+    name: &str,
+    characters: &[Character],
+    relationships: &[Relationship],
 ) -> Option<Character> {
     let mut sons = get_sons(name, characters, relationships);
     sons.sort_by(|a, b| a.name.partial_cmp(&b.name).unwrap());

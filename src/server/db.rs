@@ -1,6 +1,6 @@
-use mysql::{Pool, OptsBuilder, from_row};
+use mysql::{from_row, OptsBuilder, Pool};
 
-use super::super::data::{Relationship, Gender};
+use super::super::data::{Gender, Relationship};
 use super::env::Config;
 
 #[derive(Clone, Debug)]
@@ -23,18 +23,26 @@ pub fn get_pool(config: &Config) -> Pool {
 }
 
 pub fn create_tables(pool: &Pool) {
-    pool.prep_exec(r"CREATE TABLE IF NOT EXISTS relationship (
+    pool.prep_exec(
+        r"CREATE TABLE IF NOT EXISTS relationship (
         parent_name VARCHAR(100) NOT NULL,
         parent_sex ENUM('M','F') NOT NULL,
         child_name VARCHAR(100) NOT NULL,
         child_sex ENUM('M','F') NOT NULL
-    )", ()).unwrap();
+    )",
+        (),
+    )
+    .unwrap();
 
-    pool.prep_exec(r"CREATE TABLE IF NOT EXISTS characters (
+    pool.prep_exec(
+        r"CREATE TABLE IF NOT EXISTS characters (
         name VARCHAR(100) UNIQUE NOT NULL,
         sex ENUM('M','F') NOT NULL,
         alive BOOLEAN NOT NULL
-    )", ()).unwrap();
+    )",
+        (),
+    )
+    .unwrap();
 }
 
 pub fn fill_tables_with_raw_input(
@@ -51,10 +59,15 @@ pub fn fill_tables_with_raw_input(
     pool.prep_exec(r"TRUNCATE TABLE relationship", ()).unwrap();
 
     // then insert values
-    for mut stmt in pool.prepare(r"INSERT INTO relationship
+    for mut stmt in pool
+        .prepare(
+            r"INSERT INTO relationship
         (parent_name, parent_sex, child_name, child_sex)
         VALUES
-        (:parent_name, :parent_sex, :child_name, :child_sex)").into_iter() {
+        (:parent_name, :parent_sex, :child_name, :child_sex)",
+        )
+        .into_iter()
+    {
         for c in relationships.iter() {
             stmt.execute(params!{
                 "parent_name" => &c.parent_name,
@@ -65,27 +78,38 @@ pub fn fill_tables_with_raw_input(
         }
     }
 
-    for mut stmt in pool.prepare(r"INSERT IGNORE INTO characters
+    for mut stmt in pool
+        .prepare(
+            r"INSERT IGNORE INTO characters
         (name, sex, alive)
         VALUES
-        (:name, :sex, TRUE)").into_iter() {
+        (:name, :sex, TRUE)",
+        )
+        .into_iter()
+    {
         for c in relationships.iter() {
-            stmt.execute(params!{
+            stmt.execute(params! {
                 "name" => &c.parent_name,
                 "sex" => if c.parent_sex == Gender::M { "M" } else { "F" },
-            }).unwrap();
-            stmt.execute(params!{
+            })
+            .unwrap();
+            stmt.execute(params! {
                 "name" => &c.child_name,
                 "sex" => if c.child_sex == Gender::M { "M" } else { "F" },
-            }).unwrap();
+            })
+            .unwrap();
         }
     }
 }
 
-pub fn kill_character(name: &String, pool: &Pool) {
-    pool.prep_exec("UPDATE characters SET alive = FALSE WHERE name = :name", params!{
-        "name" => name,
-    }).unwrap();
+pub fn kill_character(name: &str, pool: &Pool) {
+    pool.prep_exec(
+        "UPDATE characters SET alive = FALSE WHERE name = :name",
+        params! {
+            "name" => name,
+        },
+    )
+    .unwrap();
 }
 
 pub fn read_all(pool: &Pool) -> (Vec<Character>, Vec<Relationship>) {
@@ -95,14 +119,17 @@ pub fn read_all(pool: &Pool) -> (Vec<Character>, Vec<Relationship>) {
             result
                 .map(|x| x.unwrap())
                 .map(|row| {
-                    let (name, sex, alive): (String, String, bool) = from_row(row);
+                    let (name, sex, alive): (String, String, bool) =
+                        from_row(row);
                     Character {
                         name,
                         sex: if sex == "M" { Gender::M } else { Gender::F },
                         alive,
                     }
-                }).collect()
-        }).unwrap();
+                })
+                .collect()
+        })
+        .unwrap();
 
     let relationships: Vec<Relationship> = pool
         .prep_exec("SELECT * FROM relationship", ())
@@ -110,15 +137,30 @@ pub fn read_all(pool: &Pool) -> (Vec<Character>, Vec<Relationship>) {
             result
                 .map(|x| x.unwrap())
                 .map(|row| {
-                    let (parent_name, parent_sex, child_name, child_sex): (String, String, String, String) = from_row(row);
+                    let (parent_name, parent_sex, child_name, child_sex): (
+                        String,
+                        String,
+                        String,
+                        String,
+                    ) = from_row(row);
                     Relationship {
                         parent_name,
-                        parent_sex: if parent_sex == "M" { Gender::M } else { Gender::F },
+                        parent_sex: if parent_sex == "M" {
+                            Gender::M
+                        } else {
+                            Gender::F
+                        },
                         child_name,
-                        child_sex: if child_sex == "M" { Gender::M } else { Gender::F },
+                        child_sex: if child_sex == "M" {
+                            Gender::M
+                        } else {
+                            Gender::F
+                        },
                     }
-                }).collect()
-        }).unwrap();
+                })
+                .collect()
+        })
+        .unwrap();
 
     (characters, relationships)
 }

@@ -21,8 +21,8 @@ fn empty_variable_error(name: &str) -> Box<dyn Error> {
 }
 
 fn read_variable(name: &str) -> Result<&'static str, Box<dyn Error>> {
-    let value = std::env::var(name)
-        .map_err(|_| missing_variable_error(name))?;
+    let value =
+        std::env::var(name).map_err(|_| missing_variable_error(name))?;
 
     if value.is_empty() {
         Err(empty_variable_error(name))
