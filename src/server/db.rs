@@ -25,7 +25,7 @@ fn gender_to_string(g: Gender) -> String {
     }
 }
 
-pub fn get_pool(config: &Config) -> Pool {
+pub fn get_pool(config: &Config) -> Result<Pool, mysql::Error> {
     let mut builder = OptsBuilder::new();
     builder
         .ip_or_hostname(Some(config.mysql_host))
@@ -34,11 +34,11 @@ pub fn get_pool(config: &Config) -> Pool {
         .pass(Some(config.mysql_password))
         .tcp_port(config.mysql_port);
 
-    Pool::new(builder).unwrap()
+    Pool::new(builder)
 }
 
-pub fn create_tables(pool: &Pool) {
-    pool.prep_exec(
+pub fn create_tables(pool: &Pool) -> Result<(), mysql::Error> {
+    let t1 = pool.prep_exec(
         r"CREATE TABLE IF NOT EXISTS relationship (
         parent_name VARCHAR(100) NOT NULL,
         parent_sex ENUM('M','F') NOT NULL,
@@ -46,32 +46,36 @@ pub fn create_tables(pool: &Pool) {
         child_sex ENUM('M','F') NOT NULL
     )",
         (),
-    )
-    .unwrap();
+    );
 
-    pool.prep_exec(
+    let t2 = pool.prep_exec(
         r"CREATE TABLE IF NOT EXISTS characters (
         name VARCHAR(100) UNIQUE NOT NULL,
         sex ENUM('M','F') NOT NULL,
         alive BOOLEAN NOT NULL
     )",
         (),
-    )
-    .unwrap();
+    );
+
+    match (t1, t2) {
+        (Ok(_), Ok(_)) => Ok(()),
+        (Err(e), _) => Err(e),
+        (_, Err(e)) => Err(e),
+    }
 }
 
 pub fn fill_tables_with_raw_input(
     config: &Config,
     pool: &Pool,
     relationships: Vec<Relationship>,
-) {
+) -> Result<(), mysql::Error> {
     if !config.reset_characters {
-        return;
+        return Ok(());
     }
 
     // first, clean tables
-    pool.prep_exec(r"TRUNCATE TABLE characters", ()).unwrap();
-    pool.prep_exec(r"TRUNCATE TABLE relationship", ()).unwrap();
+    pool.prep_exec(r"TRUNCATE TABLE characters", ())?;
+    pool.prep_exec(r"TRUNCATE TABLE relationship", ())?;
 
     // then insert values
     for mut stmt in pool
@@ -89,8 +93,7 @@ pub fn fill_tables_with_raw_input(
                 "parent_sex" => gender_to_string(c.parent_sex),
                 "child_name" => &c.child_name,
                 "child_sex" => gender_to_string(c.child_sex),
-            })
-            .unwrap();
+            })?;
         }
     }
 
@@ -112,23 +115,26 @@ pub fn fill_tables_with_raw_input(
             stmt.execute(params! {
                 "name" => &c.child_name,
                 "sex" => gender_to_string(c.child_sex),
-            })
-            .unwrap();
+            })?;
         }
     }
+
+    Ok(())
 }
 
-pub fn kill_character(name: &str, pool: &Pool) {
-    pool.prep_exec(
+pub fn kill_character(name: &str, pool: &Pool) -> Result<(), mysql::Error> {
+    match pool.prep_exec(
         "UPDATE characters SET alive = FALSE WHERE name = :name",
         params! {
             "name" => name,
         },
-    )
-    .unwrap();
+    ) {
+        Ok(_) => Ok(()),
+        Err(e) => Err(e),
+    }
 }
 
-pub fn read_characters(pool: &Pool) -> Vec<Character> {
+pub fn read_characters(pool: &Pool) -> Result<Vec<Character>, mysql::Error> {
     pool.prep_exec("SELECT * FROM characters", ())
         .map(|result| {
             result
@@ -144,11 +150,12 @@ pub fn read_characters(pool: &Pool) -> Vec<Character> {
                 })
                 .collect()
         })
-        .unwrap()
 }
 
-pub fn read_all(pool: &Pool) -> (Vec<Character>, Vec<Relationship>) {
-    let characters = read_characters(pool);
+pub fn read_all(
+    pool: &Pool,
+) -> Result<(Vec<Character>, Vec<Relationship>), mysql::Error> {
+    let characters = read_characters(pool)?;
 
     let relationships: Vec<Relationship> = pool
         .prep_exec("SELECT * FROM relationship", ())
@@ -170,8 +177,7 @@ pub fn read_all(pool: &Pool) -> (Vec<Character>, Vec<Relationship>) {
                     }
                 })
                 .collect()
-        })
-        .unwrap();
+        })?;
 
-    (characters, relationships)
+    Ok((characters, relationships))
 }

@@ -15,7 +15,7 @@ use std::process;
 use std::str::FromStr;
 
 use data::read_raw_input;
-use server::db::{fill_tables_with_raw_input, get_pool};
+use server::db::{create_tables, fill_tables_with_raw_input, get_pool};
 use server::handler::{handler_kill, handler_next, QueryParam};
 
 #[actix_rt::main]
@@ -28,13 +28,33 @@ async fn main() -> std::io::Result<()> {
         }
     };
 
-    let pool = get_pool(&config);
+    let pool = match get_pool(&config) {
+        Ok(pool) => pool,
+        Err(err) => {
+            println!("Unable to connect to database: {}", err);
+            process::exit(1);
+        }
+    };
     let pool = Box::leak(pool.into()) as &'static mysql::Pool;
+
+    match create_tables(&pool) {
+        Ok(_) => (),
+        Err(err) => {
+            println!("Unable to create tables: {}", err);
+            process::exit(1);
+        }
+    }
 
     if config.reset_characters {
         match read_raw_input() {
             Ok(relationship) => {
-                fill_tables_with_raw_input(&config, &pool, relationship);
+                match fill_tables_with_raw_input(&config, &pool, relationship) {
+                    Ok(_) => (),
+                    Err(err) => {
+                        println!("Unable to fill tables: {}", err);
+                        process::exit(1);
+                    }
+                }
             }
             Err(err) => {
                 println!("Unable to read CSV file: {}", err);
