@@ -1,0 +1,12 @@
+[package]
+name = "got"
+version = "0.1.0"
+authors = ["Axelle Piot <axellepiot@hotmail.com>"]
+edition = "2018"
+
+[dependencies]
+actix-rt = "1.0"
+actix-web = "2.0.0"
+csv = "1.1.3"
+mysql = "17.0.0"
+serde = { version = "1", features = ["derive"] }
